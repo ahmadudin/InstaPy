@@ -19,6 +19,10 @@ session.set_comments(['Great Video!'], media='Video')
 """Follow util"""
 # default enabled=False, follows ~ every 10th user from the images
 session.set_do_follow(enabled=True, percentage=10)
+# follow some amount of user from given username's follower
+# one follow every specified interval, default interval=40 (second)
+# if random = True, will pick random user to follow instead of top-down sequence
+session.follow_user_follower(['friend1', 'friend2', 'friend3'], amount=10, interval=30, random=False)
 
 """Image Check with Image tagging api"""
 # default enabled=False , enables the checking with the clarifai api (image tagging)
@@ -65,15 +69,6 @@ session.like_by_tags(['#test'], amount=10, media='Photo')
 session.like_from_image(url='www.instagram.com/image', amount=100)
 # media filtering works here as well
 session.like_by_tags(['#test'], amount=10, media='Video')
-
-# follows the followers of a given user
-# The usernames can be either a list or a string
-# The amount is for each account, in this case 30 users will be followed
-# If random is false it will pick in a top-down fashion
-session.follow_user_followers(['friend1', 'friend2', 'friend3'], amount=10, random=False)
-# follows the people that a given user is following
-# Same rules as the function above
-session.follow_user_following('friend2', amount=10, random=True)
 
 session.unfollow_users(
     amount=10)  # unfollows 10 of the accounts your following -> instagram will only unfollow 10 before you'll be 'blocked

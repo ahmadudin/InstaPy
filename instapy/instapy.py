@@ -21,13 +21,12 @@ from .login_util import login_user
 from .print_log_writer import log_follower_num
 from .time_util import sleep
 from .unfollow_util import unfollow
-from .unfollow_util import follow_given_user_followers
-from .unfollow_util import follow_given_user_following
 from .unfollow_util import follow_user
 from .unfollow_util import follow_given_user
 from .unfollow_util import load_follow_restriction
 from .unfollow_util import dump_follow_restriction
 from .unfollow_util import set_automated_followed_pool
+from .unfollow_util import follow_follower
 from .feed_util import get_like_on_feed
 
 
@@ -88,8 +87,10 @@ class InstaPy:
         """Starts local session for a selenium server. Default case scenario."""
         if self.aborting:
             return self
-
+        
         if self.use_firefox:
+            firefox_capabilities = DesiredCapabilities.FIREFOX
+            firefox_capabilities['marionette'] = True
             if self.firefox_profile_path is not None:
                 firefox_profile = webdriver.FirefoxProfile(self.firefox_profile_path)
             else:
@@ -98,7 +99,7 @@ class InstaPy:
             # permissions.default.image = 2: Disable images load, this setting can improve pageload & save bandwidth
             firefox_profile.set_preference('permissions.default.image', 2)
 
-            self.browser = webdriver.Firefox(firefox_profile=firefox_profile)
+            self.browser = webdriver.Firefox(firefox_profile=firefox_profile, capabilities=firefox_capabilities)
 
         else:
             chromedriver_location = './assets/chromedriver'
@@ -546,54 +547,6 @@ class InstaPy:
 
         return self
 
-    def follow_user_followers(self, usernames, amount=10, random=False):
-        unfollowNumber = 0
-        if not isinstance(usernames, list):
-            usernames = [usernames]
-        try:
-            for user in usernames:
-                unfollowNumber += follow_given_user_followers(self.browser, user, amount, self.dont_include, self.username, self.follow_restrict, random)
-            print("--> Total people followed : {} ".format(unfollowNumber))
-
-        except (TypeError, RuntimeWarning) as err:
-            if type(err) == RuntimeWarning:
-                print(u'Warning: {} , stopping follow_users'.format(err))
-                self.logFile.write('Warning: {} , stopping follow_users\n'.format(err))
-
-                return self
-            else:
-                print('Sorry, an error occured: {}'.format(err))
-                self.logFile.write('Sorry, an error occured: {}\n'.format(err))
-                self.aborting = True
-
-                return self
-
-        return self
-
-    def follow_user_following(self, usernames, amount=10, random=False):
-        unfollowNumber = 0
-        if not isinstance(usernames, list):
-            usernames = [usernames]
-        try:
-            for user in usernames:
-                unfollowNumber += follow_given_user_following(self.browser, user, amount, self.dont_include, self.username, self.follow_restrict, random)
-            print("--> Total people followed : {} ".format(unfollowNumber))
-
-        except (TypeError, RuntimeWarning) as err:
-            if type(err) == RuntimeWarning:
-                print(u'Warning: {} , stopping follow_users'.format(err))
-                self.logFile.write('Warning: {} , stopping follow_users\n'.format(err))
-
-                return self
-            else:
-                print('Sorry, an error occured: {}'.format(err))
-                self.logFile.write('Sorry, an error occured: {}\n'.format(err))
-                self.aborting = True
-
-                return self
-
-        return self
-
     def unfollow_users(self, amount=10, onlyInstapyFollowed=False):
         """Unfollows (default) 10 users from your following list"""
         self.automatedFollowedPool = set_automated_followed_pool(self.username)
@@ -660,3 +613,35 @@ class InstaPy:
 
         with open('./logs/followed.txt', 'w') as followFile:
             followFile.write(str(self.followed))
+
+    def follow_user_follower(self, users=None, amount=50, interval=40, random=False):
+        if self.aborting:
+            return self
+
+        followed = 0
+
+        users = users or []
+
+        for index, user in enumerate(users):
+            print('User [{}/{}]'.format(index + 1, len(users)))
+            print('--> {}'.format(user.encode('utf-8')))
+            self.logFile.write('User [{}/[]]'.format(index + 1, len(users)))
+            self.logFile.write('--> {}\n'.format(user.encode('utf-8')))
+
+            try:
+                followed += follow_follower(self.browser, user, amount, self.dont_include, self.automatedFollowedPool, self.username, interval, self.follow_restrict, random)
+
+            except NoSuchElementException:
+                print('Too few followers, aborting')
+                self.logFile.write('Too few followers, aborting\n')
+
+                self.aborting = True
+                return self
+            # followed +=1
+            # print('-------------')
+            # print('--> Followed from this user: {}'.format(follow))
+            print('')
+
+        print('Followed: {}'.format(followed))
+
+        return self
